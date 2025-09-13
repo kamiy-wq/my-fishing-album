@@ -185,66 +185,82 @@ const App: React.FC = () => {
     }
   }, [anglers, user]);
   
-  const handleCatchUpdate = async (fishId: number, updateFn: (batch: firebase.firestore.WriteBatch, fishDocRef: firebase.firestore.DocumentReference, fishDocSnap: firebase.firestore.DocumentSnapshot) => void) => {
+  const handleCatchUpdate = async (
+    fishId: number,
+    updateFn: (
+      batch: firebase.firestore.WriteBatch,
+      fishDocRef: firebase.firestore.DocumentReference,
+      fishDocSnap: firebase.firestore.DocumentSnapshot
+    ) => Record<string, any>
+  ) => {
     if (!user) {
-        alert("ログインしてください。");
-        return;
+      alert("ログインしてください。");
+      return;
     }
     const fishDocRef = db.collection(`users/${user.uid}/fishes`).doc(String(fishId));
     const batch = db.batch();
-    
     const fishDocSnap = await fishDocRef.get();
-    if (!fishDocSnap.exists) {
-        const fishData = initialFishData.find(f => f.id === fishId);
-        if (fishData) {
-            const { catches, ...baseFishData } = fishData;
-            batch.set(fishDocRef, baseFishData);
-        }
-    }
-    
-    // Always update a timestamp to ensure the listener fires
-    batch.update(fishDocRef, { updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
 
-    updateFn(batch, fishDocRef, fishDocSnap);
+    const fishUpdates = updateFn(batch, fishDocRef, fishDocSnap);
+
+    const finalFishData = {
+      ...fishUpdates,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    };
+
+    if (!fishDocSnap.exists) {
+      const fishData = initialFishData.find((f) => f.id === fishId);
+      if (fishData) {
+        const { catches, ...baseFishData } = fishData;
+        batch.set(fishDocRef, { ...baseFishData, ...finalFishData });
+      }
+    } else {
+      batch.set(fishDocRef, finalFishData, { merge: true });
+    }
+
     await batch.commit();
   };
 
   const handleAddCatch = useCallback(async (fishId: number, newCatch: Omit<CatchLog, 'id'>) => {
-      await handleCatchUpdate(fishId, (batch, fishDocRef, fishDocSnap) => {
-        const catchDocRef = fishDocRef.collection('catches').doc();
-        batch.set(catchDocRef, newCatch);
-        const fishToUpdate = fishes.find(f => f.id === fishId);
-        if (!fishToUpdate?.coverImageCatchId || !fishDocSnap.exists) {
-             batch.update(fishDocRef, { coverImageCatchId: catchDocRef.id });
-        }
-      });
+    await handleCatchUpdate(fishId, (batch, fishDocRef, fishDocSnap) => {
+      const catchDocRef = fishDocRef.collection('catches').doc();
+      batch.set(catchDocRef, newCatch);
+
+      const fishToUpdate = fishes.find((f) => f.id === fishId);
+      if (!fishToUpdate?.coverImageCatchId || !fishDocSnap.exists) {
+        return { coverImageCatchId: catchDocRef.id };
+      }
+      return {};
+    });
   }, [user, fishes]);
 
   const handleEditCatch = useCallback(async (fishId: number, updatedCatch: CatchLog) => {
-      await handleCatchUpdate(fishId, (batch, fishDocRef) => {
-        const catchDocRef = fishDocRef.collection('catches').doc(updatedCatch.id);
-        const { id, ...catchData } = updatedCatch;
-        batch.update(catchDocRef, catchData);
-      });
+    await handleCatchUpdate(fishId, (batch, fishDocRef) => {
+      const catchDocRef = fishDocRef.collection('catches').doc(updatedCatch.id);
+      const { id, ...catchData } = updatedCatch;
+      batch.update(catchDocRef, catchData);
+      return {};
+    });
   }, [user]);
 
   const handleDeleteCatch = useCallback(async (fishId: number, catchId: string) => {
-      await handleCatchUpdate(fishId, (batch, fishDocRef) => {
-        const catchDocRef = fishDocRef.collection('catches').doc(catchId);
-        batch.delete(catchDocRef);
+    await handleCatchUpdate(fishId, (batch, fishDocRef) => {
+      const catchDocRef = fishDocRef.collection('catches').doc(catchId);
+      batch.delete(catchDocRef);
 
-        const fish = fishes.find(f => f.id === fishId);
-        if (fish?.coverImageCatchId === catchId) {
-            const newCoverId = fish.catches.filter(c => c.id !== catchId)[0]?.id || null;
-            batch.update(fishDocRef, { coverImageCatchId: newCoverId });
-        }
-      });
+      const fish = fishes.find((f) => f.id === fishId);
+      if (fish?.coverImageCatchId === catchId) {
+        const newCoverId = fish.catches.filter((c) => c.id !== catchId)[0]?.id || null;
+        return { coverImageCatchId: newCoverId };
+      }
+      return {};
+    });
   }, [user, fishes]);
-  
+
   const handleSetCoverImage = useCallback(async (fishId: number, catchId: string) => {
-      await handleCatchUpdate(fishId, (batch, fishDocRef) => {
-          batch.update(fishDocRef, { coverImageCatchId: catchId });
-      });
+    await handleCatchUpdate(fishId, () => {
+      return { coverImageCatchId: catchId };
+    });
   }, [user]);
   
   if (loading || (user && !isDataLoaded)) {
