@@ -371,31 +371,50 @@ const App: React.FC = () => {
       setIsDataLoaded(true);
       return;
     }
-    
+
     setIsDataLoaded(false);
+
+    // This object will hold the most up-to-date data from all listeners.
+    const fishDataStore: Record<number, Fish> = {};
+    initialFishData.forEach(f => fishDataStore[f.id] = { ...f, catches: [] });
+
+    // Helper to update the React state from the store
+    const updateState = () => {
+        setFishes(Object.values(fishDataStore));
+    };
+
     const fishesColRef = db.collection('users').doc(user.uid).collection('fishes');
-    const unsubscribeFishes = fishesColRef.onSnapshot(async (querySnapshot) => {
-      const fishesFromDb: Record<number, Fish> = {};
-      
-      for (const fishDoc of querySnapshot.docs) {
-          const fishData = fishDoc.data();
-          const fishId = parseInt(fishDoc.id, 10);
-          fishesFromDb[fishId] = { ...(fishData as Omit<Fish, 'catches' | 'id'>), id: fishId, catches: [] };
 
-          const catchesColRef = fishDoc.ref.collection('catches');
-          const catchesSnapshot = await catchesColRef.get();
-          fishesFromDb[fishId].catches = catchesSnapshot.docs.map(catchDoc => ({
-              ...(catchDoc.data() as Omit<CatchLog, 'id'>),
-              id: catchDoc.id,
-          })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      }
-      
-      const combinedFishes = initialFishData.map(initialFish => 
-        fishesFromDb[initialFish.id] ? { ...initialFish, ...fishesFromDb[initialFish.id] } : initialFish
-      );
+    // Listener for fish metadata
+    const unsubscribeFishes = fishesColRef.onSnapshot((snapshot) => {
+        let fishDataChanged = false;
+        snapshot.docs.forEach(doc => {
+            const fishId = parseInt(doc.id, 10);
+            if (fishDataStore[fishId]) {
+                const fishDocData = doc.data();
+                // Check if data is actually different to prevent unnecessary updates
+                if (JSON.stringify(fishDocData) !== JSON.stringify({ ...fishDataStore[fishId], catches: undefined })) {
+                    Object.assign(fishDataStore[fishId], fishDocData);
+                    fishDataChanged = true;
+                }
+            }
+        });
+        if (fishDataChanged) {
+            updateState();
+        }
+        if (!isDataLoaded) setIsDataLoaded(true);
+    });
 
-      setFishes(combinedFishes);
-      setIsDataLoaded(true);
+    // Listeners for catches for ALL potential fish
+    const catchUnsubscribers = initialFishData.map(fish => {
+        const catchesColRef = fishesColRef.doc(String(fish.id)).collection('catches');
+        return catchesColRef.orderBy('date', 'desc').onSnapshot(snapshot => {
+            const catches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CatchLog));
+            if (fishDataStore[fish.id] && JSON.stringify(fishDataStore[fish.id].catches) !== JSON.stringify(catches)) {
+                fishDataStore[fish.id].catches = catches;
+                updateState();
+            }
+        });
     });
 
     const settingsDocRef = db.collection('users').doc(user.uid).collection('settings').doc('main');
@@ -410,11 +429,26 @@ const App: React.FC = () => {
         }
     });
 
+    // Initial data load to prevent empty screen
+    fishesColRef.get().then(fishesSnapshot => {
+        fishesSnapshot.docs.forEach(doc => {
+            const fishId = parseInt(doc.id, 10);
+            if (fishDataStore[fishId]) {
+                Object.assign(fishDataStore[fishId], doc.data());
+            }
+        });
+        updateState();
+        setIsDataLoaded(true);
+    });
+
+
     return () => {
       unsubscribeFishes();
       unsubscribeSettings();
+      catchUnsubscribers.forEach(unsub => unsub());
     };
   }, [user]);
+
 
   const sortedFishes = useMemo(() => 
     [...fishes].sort((a, b) => {

@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import type { Fish, CatchLog } from '../types.ts';
+import type { Fish, CatchLog } from '../types';
 import exifr from 'exifr';
-import { storage } from '../firebase.ts';
-import { useAuth } from '../hooks/useAuth.tsx';
+import { storage } from '../firebase';
+import { useAuth } from '../hooks/useAuth';
 
 interface AddCatchFormProps {
   fish: Fish;
@@ -51,33 +51,6 @@ const AddCatchForm: React.FC<AddCatchFormProps> = ({ fish, onClose, onSubmit, lo
 
   const isEditing = !!initialData;
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    const file = files[0];
-    if (!file) return;
-
-    imageFileRef.current = file;
-
-    if (imagePreview && imagePreview.startsWith('blob:')) {
-        URL.revokeObjectURL(imagePreview);
-    }
-    const previewUrl = URL.createObjectURL(file);
-    setImagePreview(previewUrl);
-    
-    if (isEditing) return; // Don't auto-update date if editing
-
-    try {
-      const exifData = await exifr.parse(file, ['DateTimeOriginal']);
-      if (exifData && exifData.DateTimeOriginal) {
-        const exifDate = new Date(exifData.DateTimeOriginal);
-        setDate(exifDate.toISOString().split('T')[0]);
-      }
-    } catch (err) {
-      console.warn('Could not read EXIF date.', err);
-    }
-  };
-
   useEffect(() => {
     return () => {
         if (imagePreview && imagePreview.startsWith('blob:')) {
@@ -104,6 +77,30 @@ const AddCatchForm: React.FC<AddCatchFormProps> = ({ fish, onClose, onSubmit, lo
       setDishNotes(initialData.dishNotes || '');
     }
   }, [initialData]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    imageFileRef.current = file;
+
+    if (imagePreview && imagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+    }
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+    
+    if (isEditing) return; // Don't auto-update date if editing
+
+    try {
+      const exifData = await exifr.parse(file, ['DateTimeOriginal']);
+      if (exifData && exifData.DateTimeOriginal) {
+        const exifDate = new Date(exifData.DateTimeOriginal);
+        setDate(exifDate.toISOString().split('T')[0]);
+      }
+    } catch (err) {
+      console.warn('Could not read EXIF date.', err);
+    }
+  };
   
   const handleDishFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
