@@ -156,18 +156,38 @@ const AddCatchForm: React.FC<AddCatchFormProps> = ({ fish, onClose, onSubmit, lo
         if (trimmedAngler && !anglers.includes(trimmedAngler)) {
             await onAddAngler(trimmedAngler);
         }
-
-        await onSubmit({
+        
+        const newCatchData: { [key: string]: any } = {
           imageUrl: finalImageUrl,
           date: date || new Date().toISOString().split('T')[0],
           location: trimmedLocation || '場所不明',
           angler: trimmedAngler || '釣り人不明',
-          size: size.trim() || undefined,
-          notes: notes.trim() || undefined,
-          dishImageUrl: finalDishImageUrl ?? undefined,
-          tasteRating: tasteRating > 0 ? tasteRating : undefined,
-          dishNotes: dishNotes.trim() || undefined,
-        });
+        };
+
+        const trimmedSize = size.trim();
+        if (trimmedSize) {
+          newCatchData.size = trimmedSize;
+        }
+
+        const trimmedNotes = notes.trim();
+        if (trimmedNotes) {
+          newCatchData.notes = trimmedNotes;
+        }
+
+        if (finalDishImageUrl) {
+          newCatchData.dishImageUrl = finalDishImageUrl;
+        }
+
+        if (tasteRating > 0) {
+          newCatchData.tasteRating = tasteRating;
+        }
+
+        const trimmedDishNotes = dishNotes.trim();
+        if (trimmedDishNotes) {
+          newCatchData.dishNotes = trimmedDishNotes;
+        }
+
+        await onSubmit(newCatchData as Omit<CatchLog, 'id'>);
         
         onClose();
 
