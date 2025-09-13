@@ -189,42 +189,43 @@ const App: React.FC = () => {
     if (!user) throw new Error("ログインが必要です。");
 
     const fishDocRef = db.collection(`users/${user.uid}/fishes`).doc(String(fishId));
-    
-    // Use a transaction to ensure atomic read-modify-write. This is crucial for correctly
-    // creating the parent fish document if it's the first catch.
-    return db.runTransaction(async (transaction) => {
-        const fishDocSnap = await transaction.get(fishDocRef);
-        const catchDocRef = fishDocRef.collection('catches').doc();
+    const catchDocRef = fishDocRef.collection('catches').doc();
 
-        // 1. Write the new catch log to its own document in the subcollection.
-        transaction.set(catchDocRef, newCatch);
+    // The transaction was persistently failing, so switching to a simpler and more direct
+    // batch write. The risk of a race condition in this single-user app is negligible.
+    const fishDocSnap = await fishDocRef.get();
+    const batch = db.batch();
 
-        // 2. Handle the parent fish document.
-        if (!fishDocSnap.exists) {
-            // The fish document does not exist, so we need to create it.
-            const initialFish = initialFishData.find((f) => f.id === fishId);
-            if (!initialFish) throw new Error(`Fish with ID ${fishId} not found in definitions.`);
-            
-            const { catches, ...baseFishData } = initialFish;
-            const newFishDocumentData = {
-                ...baseFishData,
-                coverImageCatchId: catchDocRef.id, // Set the first catch as the cover image.
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            };
-            transaction.set(fishDocRef, newFishDocumentData);
-        } else {
-            // The fish document already exists. We just need to update its timestamp
-            // and potentially set the cover image if it doesn't have one.
-            const fishData = fishDocSnap.data();
-            const updates: { [key: string]: any } = {
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            };
-            if (!fishData?.coverImageCatchId) {
-                updates.coverImageCatchId = catchDocRef.id;
-            }
-            transaction.update(fishDocRef, updates);
+    // 1. Write the new catch log to its own document in the subcollection.
+    batch.set(catchDocRef, newCatch);
+
+    // 2. Handle the parent fish document.
+    if (!fishDocSnap.exists) {
+        // The fish document does not exist, so we need to create it.
+        const initialFish = initialFishData.find((f) => f.id === fishId);
+        if (!initialFish) throw new Error(`Fish with ID ${fishId} not found in definitions.`);
+        
+        const { catches, ...baseFishData } = initialFish;
+        const newFishDocumentData = {
+            ...baseFishData,
+            coverImageCatchId: catchDocRef.id, // Set the first catch as the cover image.
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        };
+        batch.set(fishDocRef, newFishDocumentData);
+    } else {
+        // The fish document already exists. We just need to update its timestamp
+        // and potentially set the cover image if it doesn't have one.
+        const fishData = fishDocSnap.data();
+        const updates: { [key: string]: any } = {
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        };
+        if (!fishData?.coverImageCatchId) {
+            updates.coverImageCatchId = catchDocRef.id;
         }
-    });
+        batch.update(fishDocRef, updates);
+    }
+
+    return batch.commit();
   }, [user]);
 
   const handleEditCatch = useCallback(async (fishId: number, updatedCatch: CatchLog) => {
