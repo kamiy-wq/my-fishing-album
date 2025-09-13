@@ -10,9 +10,9 @@ interface AddCatchFormProps {
   onClose: () => void;
   onSubmit: (newCatch: Omit<CatchLog, 'id'>) => Promise<void>;
   locations: string[];
-  onAddLocation: (location: string) => void;
+  onAddLocation: (location: string) => Promise<void>;
   anglers: string[];
-  onAddAngler: (angler: string) => void;
+  onAddAngler: (angler: string) => Promise<void>;
   initialData?: CatchLog | null;
   onDeleteCatch?: (fishId: number, catchId: string) => Promise<void>;
 }
@@ -149,12 +149,12 @@ const AddCatchForm: React.FC<AddCatchFormProps> = ({ fish, onClose, onSubmit, lo
 
         const trimmedLocation = location.trim();
         if (trimmedLocation && !locations.includes(trimmedLocation)) {
-          onAddLocation(trimmedLocation);
+          await onAddLocation(trimmedLocation);
         }
 
         const trimmedAngler = angler.trim();
         if (trimmedAngler && !anglers.includes(trimmedAngler)) {
-            onAddAngler(trimmedAngler);
+            await onAddAngler(trimmedAngler);
         }
 
         await onSubmit({
@@ -168,9 +168,13 @@ const AddCatchForm: React.FC<AddCatchFormProps> = ({ fish, onClose, onSubmit, lo
           tasteRating: tasteRating > 0 ? tasteRating : undefined,
           dishNotes: dishNotes.trim() || undefined,
         });
+        
+        onClose();
+
     } catch (error) {
         console.error("Error submitting form:", error);
         alert('データの保存に失敗しました。');
+    } finally {
         setIsUploading(false);
     }
   };

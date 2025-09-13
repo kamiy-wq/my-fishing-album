@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from './firebase';
 import type { Fish, CatchLog } from './types';
-import { initialFishData } from './data/initialFishData';
+import initialFishData from './data/initialFishData';
 import Header from './components/Header';
 import FishGrid from './components/FishGrid';
 import FishDetailModal from './components/FishDetailModal';
@@ -103,7 +103,7 @@ const App: React.FC = () => {
     }
     
     setIsDataLoaded(false);
-    const fishesColRef = db.collection('users').doc(user.uid).collection('fishes');
+    const fishesColRef = db.collection('users').doc(user.uid).collection('fishes').orderBy('id');
     const unsubscribeFishes = fishesColRef.onSnapshot(async (querySnapshot) => {
       const fishesFromDb: Record<number, Fish> = {};
       
@@ -173,19 +173,19 @@ const App: React.FC = () => {
     await settingsDocRef.set({ [type]: newItems }, { merge: true });
   };
 
-  const handleAddLocation = useCallback((newLocation: string) => {
+  const handleAddLocation = useCallback(async (newLocation: string) => {
     if (newLocation && !locations.includes(newLocation)) {
-      updateSettings('locations', newLocation);
+      await updateSettings('locations', newLocation);
     }
   }, [locations, user]);
 
-  const handleAddAngler = useCallback((newAngler: string) => {
+  const handleAddAngler = useCallback(async (newAngler: string) => {
     if (newAngler && !anglers.includes(newAngler)) {
-        updateSettings('anglers', newAngler);
+        await updateSettings('anglers', newAngler);
     }
   }, [anglers, user]);
   
-  const handleCatchUpdate = async (fishId: number, updateFn: (batch: firebase.firestore.WriteBatch, fishDocRef: firebase.firestore.DocumentReference) => void) => {
+  const handleCatchUpdate = async (fishId: number, updateFn: (batch: firebase.firestore.WriteBatch, fishDocRef: firebase.firestore.DocumentReference, fishDocSnap: firebase.firestore.DocumentSnapshot) => void) => {
     if (!user) {
         alert("ログインしてください。");
         return;
@@ -193,7 +193,6 @@ const App: React.FC = () => {
     const fishDocRef = db.collection(`users/${user.uid}/fishes`).doc(String(fishId));
     const batch = db.batch();
     
-    // Ensure the fish document exists before adding a catch to it
     const fishDocSnap = await fishDocRef.get();
     if (!fishDocSnap.exists) {
         const fishData = initialFishData.find(f => f.id === fishId);
@@ -202,17 +201,20 @@ const App: React.FC = () => {
             batch.set(fishDocRef, baseFishData);
         }
     }
+    
+    // Always update a timestamp to ensure the listener fires
+    batch.update(fishDocRef, { updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
 
-    updateFn(batch, fishDocRef);
+    updateFn(batch, fishDocRef, fishDocSnap);
     await batch.commit();
   };
 
   const handleAddCatch = useCallback(async (fishId: number, newCatch: Omit<CatchLog, 'id'>) => {
-      await handleCatchUpdate(fishId, (batch, fishDocRef) => {
+      await handleCatchUpdate(fishId, (batch, fishDocRef, fishDocSnap) => {
         const catchDocRef = fishDocRef.collection('catches').doc();
         batch.set(catchDocRef, newCatch);
         const fishToUpdate = fishes.find(f => f.id === fishId);
-        if (!fishToUpdate?.coverImageCatchId) {
+        if (!fishToUpdate?.coverImageCatchId || !fishDocSnap.exists) {
              batch.update(fishDocRef, { coverImageCatchId: catchDocRef.id });
         }
       });

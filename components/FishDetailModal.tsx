@@ -11,9 +11,9 @@ interface FishDetailModalProps {
   onDeleteCatch: (fishId: number, catchId: string) => Promise<void>;
   onSetCoverImage: (fishId: number, catchId: string) => Promise<void>;
   locations: string[];
-  onAddLocation: (location: string) => void;
+  onAddLocation: (location: string) => Promise<void>;
   anglers: string[];
-  onAddAngler: (angler: string) => void;
+  onAddAngler: (angler: string) => Promise<void>;
   isLoggedIn: boolean;
 }
 
@@ -38,8 +38,6 @@ const FishDetailModal: React.FC<FishDetailModalProps> = ({ fish, onClose, onAddC
     } else {
       await onAddCatch(fish.id, catchData);
     }
-    setFormMode(null);
-    setEditingCatch(null);
   };
   
   const handleOpenEditForm = (catchLog: CatchLog) => {
