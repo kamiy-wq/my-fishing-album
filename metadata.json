@@ -1,0 +1,7 @@
+{
+  "name": "我が家の釣り図鑑 (My Family's Fishing Encyclopedia)",
+  "description": "A web application for a family to create their own fishing encyclopedia. Log catches with photos, locations, dates, and other details to build a personal fishing album. Includes premium features like AI fish identification.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
