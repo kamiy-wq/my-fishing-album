@@ -1,15 +1,15 @@
 
-import React, { useState, useEffect } from 'react';
-import type { Fish, CatchLog } from '../types.ts';
-import AddCatchForm from './AddCatchForm.tsx';
+import React, { useState } from 'react';
+import type { Fish, CatchLog } from '../types';
+import AddCatchForm from './AddCatchForm';
 
 interface FishDetailModalProps {
   fish: Fish;
   onClose: () => void;
-  onAddCatch: (fishId: number, newCatch: Omit<CatchLog, 'id'>) => void;
-  onEditCatch: (fishId: number, updatedCatch: CatchLog) => void;
-  onDeleteCatch: (fishId: number, catchId: string) => void;
-  onSetCoverImage: (fishId: number, catchId: string) => void;
+  onAddCatch: (fishId: number, newCatch: Omit<CatchLog, 'id'>) => Promise<void>;
+  onEditCatch: (fishId: number, updatedCatch: CatchLog) => Promise<void>;
+  onDeleteCatch: (fishId: number, catchId: string) => Promise<void>;
+  onSetCoverImage: (fishId: number, catchId: string) => Promise<void>;
   locations: string[];
   onAddLocation: (location: string) => void;
   anglers: string[];
@@ -30,12 +30,13 @@ const TrashIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColo
 const FishDetailModal: React.FC<FishDetailModalProps> = ({ fish, onClose, onAddCatch, onEditCatch, onDeleteCatch, onSetCoverImage, locations, onAddLocation, anglers, onAddAngler, isLoggedIn }) => {
   const [formMode, setFormMode] = useState<'add' | 'edit' | null>(null);
   const [editingCatch, setEditingCatch] = useState<CatchLog | null>(null);
+  const [isSettingCover, setIsSettingCover] = useState<string | null>(null);
 
-  const handleFormSubmit = (catchData: Omit<CatchLog, 'id'>) => {
+  const handleFormSubmit = async (catchData: Omit<CatchLog, 'id'>) => {
     if (formMode === 'edit' && editingCatch) {
-      onEditCatch(fish.id, { ...editingCatch, ...catchData });
+      await onEditCatch(fish.id, { ...editingCatch, ...catchData });
     } else {
-      onAddCatch(fish.id, catchData);
+      await onAddCatch(fish.id, catchData);
     }
     setFormMode(null);
     setEditingCatch(null);
@@ -46,16 +47,11 @@ const FishDetailModal: React.FC<FishDetailModalProps> = ({ fish, onClose, onAddC
     setFormMode('edit');
   };
 
-  const handleCloseForm = () => {
-    setFormMode(null); 
-    setEditingCatch(null);
-  }
-
   if (formMode) {
     return (
       <AddCatchForm 
         fish={fish} 
-        onClose={handleCloseForm}
+        onClose={() => { setFormMode(null); setEditingCatch(null); }}
         onSubmit={handleFormSubmit}
         locations={locations}
         onAddLocation={onAddLocation}
@@ -135,20 +131,27 @@ const FishDetailModal: React.FC<FishDetailModalProps> = ({ fish, onClose, onAddC
                     )}
                     <div className="border-t border-gray-200 bg-white p-2 flex justify-end items-center gap-2">
                       <button 
-                        onClick={() => onSetCoverImage(fish.id, log.id)} 
-                        disabled={fish.coverImageCatchId === log.id}
+                        onClick={async () => {
+                          setIsSettingCover(log.id);
+                          try {
+                            await onSetCoverImage(fish.id, log.id);
+                          } finally {
+                            setIsSettingCover(null);
+                          }
+                        }}
+                        disabled={fish.coverImageCatchId === log.id || !!isSettingCover}
                         className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors py-1 px-2 rounded-md hover:bg-gray-100"
                         title="代表写真に設定する"
                         aria-label="代表写真に設定する"
                       >
                         <StarIcon className={`w-4 h-4 ${fish.coverImageCatchId === log.id ? 'text-yellow-500' : ''}`} />
-                        <span>代表に設定</span>
+                        <span>{isSettingCover === log.id ? '設定中...' : '代表に設定'}</span>
                       </button>
                       <button onClick={() => handleOpenEditForm(log)} className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-blue-600 py-1 px-2 rounded-md hover:bg-gray-100 transition-colors" title="編集する" aria-label="編集する"><EditIcon /><span>編集</span></button>
                       <button 
-                        onClick={() => {
+                        onClick={async () => {
                           if (window.confirm('この釣果記録を削除しますか？この操作は元に戻せません。')) {
-                            onDeleteCatch(fish.id, log.id);
+                            await onDeleteCatch(fish.id, log.id);
                           }
                         }}
                         className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 py-1 px-2 rounded-md hover:bg-red-50 transition-colors" title="削除する" aria-label="削除する">

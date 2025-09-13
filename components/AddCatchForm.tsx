@@ -8,13 +8,13 @@ import { useAuth } from '../hooks/useAuth';
 interface AddCatchFormProps {
   fish: Fish;
   onClose: () => void;
-  onSubmit: (newCatch: Omit<CatchLog, 'id'>) => void;
+  onSubmit: (newCatch: Omit<CatchLog, 'id'>) => Promise<void>;
   locations: string[];
   onAddLocation: (location: string) => void;
   anglers: string[];
   onAddAngler: (angler: string) => void;
   initialData?: CatchLog | null;
-  onDeleteCatch?: (fishId: number, catchId: string) => void;
+  onDeleteCatch?: (fishId: number, catchId: string) => Promise<void>;
 }
 
 const PhotoUploadIcon = () => (
@@ -157,7 +157,7 @@ const AddCatchForm: React.FC<AddCatchFormProps> = ({ fish, onClose, onSubmit, lo
             onAddAngler(trimmedAngler);
         }
 
-        onSubmit({
+        await onSubmit({
           imageUrl: finalImageUrl,
           date: date || new Date().toISOString().split('T')[0],
           location: trimmedLocation || '場所不明',
@@ -171,7 +171,6 @@ const AddCatchForm: React.FC<AddCatchFormProps> = ({ fish, onClose, onSubmit, lo
     } catch (error) {
         console.error("Error submitting form:", error);
         alert('データの保存に失敗しました。');
-    } finally {
         setIsUploading(false);
     }
   };
@@ -323,10 +322,10 @@ const AddCatchForm: React.FC<AddCatchFormProps> = ({ fish, onClose, onSubmit, lo
               {isEditing && onDeleteCatch && (
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     if (window.confirm('この釣果記録を削除しますか？')) {
                       if (initialData) {
-                        onDeleteCatch(fish.id, initialData.id);
+                        await onDeleteCatch(fish.id, initialData.id);
                         onClose();
                       }
                     }
