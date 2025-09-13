@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useContext, createContext, ReactNode } from 'react';
-import { auth, googleProvider } from '../firebase.ts';
+import { auth, googleProvider } from '../firebase';
 import firebase from 'firebase/compat/app';
 
 interface AuthContextType {
