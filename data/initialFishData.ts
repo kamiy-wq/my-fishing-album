@@ -261,6 +261,22 @@ const initialFishData: Fish[] = [
     catches: [],
   },
   {
+    id: 33,
+    name: 'アイナメ (鮎魚女)',
+    description: '岩場に潜む人気の根魚。上品な白身は非常に美味。独特の模様があり、防波堤や船からの釣りのターゲットになる。',
+    habitat: '沿岸の岩礁帯や藻場。',
+    defaultImageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Hexagrammos_otakii_by_OpenCage.jpg/640px-Hexagrammos_otakii_by_OpenCage.jpg',
+    catches: [],
+  },
+  {
+    id: 34,
+    name: 'グレ (メジナ)',
+    description: 'メジナとも呼ばれる磯釣りの大人気ターゲット。引きが強く、警戒心も高いため釣り上げるには技術が必要。',
+    habitat: '沿岸の岩礁域。',
+    defaultImageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Girella_punctata_by_OpenCage.jpg/640px-Girella_punctata_by_OpenCage.jpg',
+    catches: [],
+  },
+  {
     id: 999,
     name: 'その他の魚',
     description: '図鑑にない魚はこちらに記録しましょう。メモ欄に魚の名前を書いておくと便利です。',

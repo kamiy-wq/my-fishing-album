@@ -150,7 +150,7 @@ const App: React.FC = () => {
     [...fishes].sort((a, b) => {
       if (a.id === 999) return 1;
       if (b.id === 999) return -1;
-      return a.id - b.id;
+      return a.name.localeCompare(b.name, 'ja');
     }), [fishes]);
 
   const selectedFish = useMemo(() => 
