@@ -4,6 +4,7 @@ import type { Fish, CatchLog } from '../types';
 import exifr from 'exifr';
 import { storage } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
+import { albumOwnerUid, isFamilyMember } from '../familyConfig';
 
 interface AddCatchFormProps {
   fish: Fish;
@@ -31,6 +32,7 @@ const StarIcon = ({ className = '', ...props }: { className?: string;[key: strin
 
 const AddCatchForm: React.FC<AddCatchFormProps> = ({ fish, onClose, onSubmit, locations, onAddLocation, anglers, onAddAngler, initialData = null, onDeleteCatch }) => {
   const { user } = useAuth();
+  const hasAccess = !!user && isFamilyMember(user.uid);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -115,16 +117,16 @@ const AddCatchForm: React.FC<AddCatchFormProps> = ({ fish, onClose, onSubmit, lo
   };
   
   const uploadImage = async (file: File, path: string): Promise<string> => {
-      if (!user) throw new Error("User not logged in");
-      const storageRef = storage.ref(`users/${user.uid}/${path}/${Date.now()}-${file.name}`);
+      if (!user || !hasAccess) throw new Error("This account is not allowed to edit the family album");
+      const storageRef = storage.ref(`users/${albumOwnerUid}/${path}/${Date.now()}-${file.name}`);
       await storageRef.put(file);
       return await storageRef.getDownloadURL();
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-        alert('ログインしてください。');
+    if (!user || !hasAccess) {
+        alert('このアカウントには編集権限がありません。');
         return;
     }
     
