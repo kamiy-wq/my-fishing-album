@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Fish, CatchLog } from '../types';
 import AddCatchForm from './AddCatchForm';
 import AuthenticatedImage from './AuthenticatedImage';
@@ -32,6 +32,27 @@ const FishDetailModal: React.FC<FishDetailModalProps> = ({ fish, onClose, onAddC
   const [formMode, setFormMode] = useState<'add' | 'edit' | null>(null);
   const [editingCatch, setEditingCatch] = useState<CatchLog | null>(null);
   const [isSettingCover, setIsSettingCover] = useState<string | null>(null);
+  const [expandedImage, setExpandedImage] = useState<{ source: string; alt: string } | null>(null);
+
+  useEffect(() => {
+    if (!expandedImage) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setExpandedImage(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [expandedImage]);
 
   const handleFormSubmit = async (catchData: Omit<CatchLog, 'id'>) => {
     if (formMode === 'edit' && editingCatch) {
@@ -93,7 +114,17 @@ const FishDetailModal: React.FC<FishDetailModalProps> = ({ fish, onClose, onAddC
                 {fish.catches.map((log) => (
                   <div key={log.id} className="bg-gray-50 rounded-lg overflow-hidden shadow flex flex-col">
                     <div className="relative bg-gray-100 min-h-48 flex items-center justify-center">
-                      <AuthenticatedImage source={log.imageUrl} alt={`Catch on ${log.date}`} className="w-full max-h-[65vh] object-contain bg-gray-100" loading="lazy" />
+                      <button
+                        type="button"
+                        onClick={() => setExpandedImage({ source: log.imageUrl, alt: `${fish.name} ${log.date}` })}
+                        className="w-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+                        aria-label="写真を全画面で見る"
+                      >
+                        <AuthenticatedImage source={log.imageUrl} alt={`Catch on ${log.date}`} className="w-full max-h-[65vh] object-contain bg-gray-100" loading="lazy" />
+                      </button>
+                      <div className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-1 text-[11px] font-medium text-white">
+                        タップで拡大
+                      </div>
                       {fish.coverImageCatchId === log.id && (
                         <div className="absolute top-2 left-2 bg-yellow-400 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow">
                           <StarIcon className="w-3 h-3"/> <span>代表写真</span>
@@ -111,7 +142,17 @@ const FishDetailModal: React.FC<FishDetailModalProps> = ({ fish, onClose, onAddC
                       <div className="border-t border-gray-200 p-3 text-sm space-y-2">
                           <h4 className="font-semibold text-gray-600 text-xs uppercase tracking-wider">食べた記録</h4>
                           {log.dishImageUrl && (
-                              <AuthenticatedImage source={log.dishImageUrl} alt="料理の写真" className="w-full max-h-80 object-contain rounded-md mt-1 bg-gray-100" loading="lazy" />
+                            <button
+                              type="button"
+                              onClick={() => setExpandedImage({ source: log.dishImageUrl!, alt: `${fish.name}の料理写真` })}
+                              className="relative mt-1 w-full cursor-zoom-in rounded-md bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              aria-label="料理写真を全画面で見る"
+                            >
+                              <AuthenticatedImage source={log.dishImageUrl} alt="料理の写真" className="w-full max-h-80 object-contain rounded-md bg-gray-100" loading="lazy" />
+                              <span className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-1 text-[11px] font-medium text-white">
+                                タップで拡大
+                              </span>
+                            </button>
                           )}
                           {log.tasteRating && log.tasteRating > 0 && (
                               <div className="flex items-center">
@@ -176,6 +217,43 @@ const FishDetailModal: React.FC<FishDetailModalProps> = ({ fish, onClose, onAddC
           </button>
         </div>
       </div>
+
+      {expandedImage && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95 p-2 sm:p-6"
+          onClick={(event) => {
+            event.stopPropagation();
+            setExpandedImage(null);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="写真の全画面表示"
+        >
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setExpandedImage(null);
+            }}
+            className="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white shadow-lg"
+            aria-label="全画面表示を閉じる"
+          >
+            <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div
+            className="flex h-full w-full items-center justify-center"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <AuthenticatedImage
+              source={expandedImage.source}
+              alt={expandedImage.alt}
+              className="max-h-full max-w-full object-contain"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
