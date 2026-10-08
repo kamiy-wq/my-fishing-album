@@ -5,6 +5,8 @@ import exifr from 'exifr';
 import { storage } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import { albumOwnerUid, isFamilyMember } from '../familyConfig';
+import { toStorageValue } from '../storageImages';
+import AuthenticatedImage from './AuthenticatedImage';
 
 interface AddCatchFormProps {
   fish: Fish;
@@ -118,9 +120,9 @@ const AddCatchForm: React.FC<AddCatchFormProps> = ({ fish, onClose, onSubmit, lo
   
   const uploadImage = async (file: File, path: string): Promise<string> => {
       if (!user || !hasAccess) throw new Error("This account is not allowed to edit the family album");
-      const storageRef = storage.ref(`users/${albumOwnerUid}/${path}/${Date.now()}-${file.name}`);
-      await storageRef.put(file);
-      return await storageRef.getDownloadURL();
+      const storageRef = storage.ref(`users/${albumOwnerUid}/private/${path}/${Date.now()}-${file.name}`);
+      await storageRef.put(file, { contentType: file.type || undefined });
+      return toStorageValue(storageRef.fullPath);
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -230,7 +232,7 @@ const AddCatchForm: React.FC<AddCatchFormProps> = ({ fish, onClose, onSubmit, lo
                 <div className="space-y-1 text-center">
                   {imagePreview ? (
                      <div>
-                        <img src={imagePreview} alt="Preview" className="mx-auto h-40 w-auto rounded-md object-contain mb-4" />
+                        <AuthenticatedImage source={imagePreview} alt="Preview" className="mx-auto h-40 w-auto rounded-md object-contain mb-4" />
                         <div className="flex justify-center items-center gap-4 text-sm">
                             <label htmlFor="file-upload" className="font-medium text-blue-600 hover:text-blue-500 cursor-pointer">
                                 写真を変更
@@ -294,7 +296,7 @@ const AddCatchForm: React.FC<AddCatchFormProps> = ({ fish, onClose, onSubmit, lo
                     <div className="space-y-1 text-center">
                        {dishImagePreview ? (
                         <div>
-                            <img src={dishImagePreview} alt="Dish Preview" className="mx-auto h-40 w-auto rounded-md object-contain mb-4" />
+                            <AuthenticatedImage source={dishImagePreview} alt="Dish Preview" className="mx-auto h-40 w-auto rounded-md object-contain mb-4" />
                             <div className="flex justify-center items-center gap-4 text-sm">
                                 <label htmlFor="dish-file-upload" className="font-medium text-blue-600 hover:text-blue-500 cursor-pointer">
                                     写真を変更
