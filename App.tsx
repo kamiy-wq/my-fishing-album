@@ -11,11 +11,13 @@ import EncyclopediaProgress from './components/EncyclopediaProgress';
 import Ranking from './components/Ranking';
 import { useAuth } from './hooks/useAuth';
 import firebase from 'firebase/compat/app';
+import { albumOwnerUid, isFamilyConfigReady, isFamilyMember } from './familyConfig';
 
 const LOCAL_STORAGE_KEY = 'my-family-fishing-encyclopedia';
 
 const App: React.FC = () => {
   const { user, loading } = useAuth();
+  const hasAccess = !!user && isFamilyMember(user.uid);
   const [fishes, setFishes] = useState<Fish[]>([]);
   const [selectedFishId, setSelectedFishId] = useState<number | null>(null);
   const [locations, setLocations] = useState<string[]>([]);
@@ -25,10 +27,10 @@ const App: React.FC = () => {
   // Data migration for first-time login
   useEffect(() => {
     const migrateData = async () => {
-      if (!user) return;
+      if (!user || !hasAccess || user.uid !== albumOwnerUid) return;
   
-      const userDocRef = db.collection('users').doc(user.uid);
-      const settingsDocRef = db.collection('users').doc(user.uid).collection('settings').doc('main');
+      const userDocRef = db.collection('users').doc(albumOwnerUid);
+      const settingsDocRef = db.collection('users').doc(albumOwnerUid).collection('settings').doc('main');
       const userDocSnap = await userDocRef.get();
   
       // If user document doesn't exist, it's their first time.
@@ -54,7 +56,7 @@ const App: React.FC = () => {
             // Migrate fish and catches
             if (localData.fishes && Array.isArray(localData.fishes)) {
               localData.fishes.forEach((fish: Fish) => {
-                const fishDocRef = db.collection(`users/${user.uid}/fishes`).doc(String(fish.id));
+                const fishDocRef = db.collection(`users/${albumOwnerUid}/fishes`).doc(String(fish.id));
                 const { catches, ...fishData } = fish;
                 batch.set(fishDocRef, fishData);
                 if (catches && catches.length > 0) {
@@ -90,20 +92,20 @@ const App: React.FC = () => {
     if(user){
         migrateData();
     }
-  }, [user]);
+  }, [user, hasAccess]);
   
   // Subscribe to Firestore data
   useEffect(() => {
-    if (!user) {
-      setFishes(initialFishData);
+    if (!user || !hasAccess || !isFamilyConfigReady) {
+      setFishes([]);
       setLocations([]);
-      setAnglers(['パパ', 'ママ', 'お兄ちゃん', '妹']);
+      setAnglers([]);
       setIsDataLoaded(true);
       return;
     }
     
     setIsDataLoaded(false);
-    const fishesColRef = db.collection('users').doc(user.uid).collection('fishes').orderBy('id');
+    const fishesColRef = db.collection('users').doc(albumOwnerUid).collection('fishes').orderBy('id');
     const unsubscribeFishes = fishesColRef.onSnapshot(async (querySnapshot) => {
       const fishesFromDb: Record<number, Fish> = {};
       
@@ -128,7 +130,7 @@ const App: React.FC = () => {
       setIsDataLoaded(true);
     });
 
-    const settingsDocRef = db.collection('users').doc(user.uid).collection('settings').doc('main');
+    const settingsDocRef = db.collection('users').doc(albumOwnerUid).collection('settings').doc('main');
     const unsubscribeSettings = settingsDocRef.onSnapshot((docSnap) => {
         if (docSnap.exists) {
             const settings = docSnap.data();
@@ -144,7 +146,7 @@ const App: React.FC = () => {
       unsubscribeFishes();
       unsubscribeSettings();
     };
-  }, [user]);
+  }, [user, hasAccess]);
 
   const sortedFishes = useMemo(() => 
     [...fishes].sort((a, b) => {
@@ -167,8 +169,8 @@ const App: React.FC = () => {
   }, []);
   
   const updateSettings = async (type: 'locations' | 'anglers', value: string) => {
-    if (!user) return;
-    const settingsDocRef = db.collection('users').doc(user.uid).collection('settings').doc('main');
+    if (!user || !hasAccess) return;
+    const settingsDocRef = db.collection('users').doc(albumOwnerUid).collection('settings').doc('main');
     const newItems = type === 'locations' ? [...locations, value] : [...anglers, value];
     await settingsDocRef.set({ [type]: newItems }, { merge: true });
   };
@@ -177,18 +179,18 @@ const App: React.FC = () => {
     if (newLocation && !locations.includes(newLocation)) {
       await updateSettings('locations', newLocation);
     }
-  }, [locations, user]);
+  }, [locations, user, hasAccess]);
 
   const handleAddAngler = useCallback(async (newAngler: string) => {
     if (newAngler && !anglers.includes(newAngler)) {
         await updateSettings('anglers', newAngler);
     }
-  }, [anglers, user]);
+  }, [anglers, user, hasAccess]);
   
   const handleAddCatch = useCallback(async (fishId: number, newCatch: Omit<CatchLog, 'id'>) => {
-    if (!user) throw new Error("ログインが必要です。");
+    if (!user || !hasAccess) throw new Error("このアカウントには編集権限がありません。");
 
-    const fishDocRef = db.collection(`users/${user.uid}/fishes`).doc(String(fishId));
+    const fishDocRef = db.collection(`users/${albumOwnerUid}/fishes`).doc(String(fishId));
 
     // Use a transaction to atomically create the catch and potentially the parent fish document.
     // This is the most robust way to handle this operation and prevents race conditions or
@@ -232,12 +234,12 @@ const App: React.FC = () => {
             transaction.update(fishDocRef, updates);
         }
     });
-  }, [user]);
+  }, [user, hasAccess]);
 
   const handleEditCatch = useCallback(async (fishId: number, updatedCatch: CatchLog) => {
-    if (!user) throw new Error("ログインが必要です。");
+    if (!user || !hasAccess) throw new Error("このアカウントには編集権限がありません。");
 
-    const fishDocRef = db.collection(`users/${user.uid}/fishes`).doc(String(fishId));
+    const fishDocRef = db.collection(`users/${albumOwnerUid}/fishes`).doc(String(fishId));
     const catchDocRef = fishDocRef.collection('catches').doc(updatedCatch.id);
     const { id, ...catchData } = updatedCatch;
 
@@ -248,12 +250,12 @@ const App: React.FC = () => {
     batch.update(fishDocRef, { updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
 
     return batch.commit();
-  }, [user]);
+  }, [user, hasAccess]);
 
   const handleDeleteCatch = useCallback(async (fishId: number, catchId: string) => {
-    if (!user) throw new Error("ログインが必要です。");
+    if (!user || !hasAccess) throw new Error("このアカウントには編集権限がありません。");
 
-    const fishDocRef = db.collection(`users/${user.uid}/fishes`).doc(String(fishId));
+    const fishDocRef = db.collection(`users/${albumOwnerUid}/fishes`).doc(String(fishId));
     const catchDocRef = fishDocRef.collection('catches').doc(catchId);
     
     // We need to read the fish data inside a transaction to avoid race conditions
@@ -291,18 +293,18 @@ const App: React.FC = () => {
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
     });
-  }, [user]);
+  }, [user, hasAccess]);
 
   const handleSetCoverImage = useCallback(async (fishId: number, catchId: string) => {
-    if (!user) throw new Error("ログインが必要です。");
-    const fishDocRef = db.collection(`users/${user.uid}/fishes`).doc(String(fishId));
+    if (!user || !hasAccess) throw new Error("このアカウントには編集権限がありません。");
+    const fishDocRef = db.collection(`users/${albumOwnerUid}/fishes`).doc(String(fishId));
     return fishDocRef.update({
         coverImageCatchId: catchId,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
-  }, [user]);
+  }, [user, hasAccess]);
   
-  if (loading || (user && !isDataLoaded)) {
+  if (loading || (user && hasAccess && !isDataLoaded)) {
     return (
         <div className="min-h-screen bg-blue-50 flex items-center justify-center">
             <div className="text-center">
@@ -316,16 +318,53 @@ const App: React.FC = () => {
     );
   }
 
+  if (!isFamilyConfigReady) {
+    return (
+      <div className="min-h-screen bg-blue-50 text-gray-800">
+        <Header />
+        <main className="container mx-auto p-4 md:p-8">
+          <div className="max-w-xl mx-auto bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-bold text-red-700 mb-2">家族共有の設定が未完了です</h2>
+            <p className="text-gray-700">Netlify に VITE_FAMILY_ALBUM_OWNER_UID を設定してください。</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-blue-50 text-gray-800">
+        <Header />
+        <main className="container mx-auto p-4 md:p-8">
+          <div className="max-w-xl mx-auto bg-white rounded-lg shadow p-6 text-center">
+            <h2 className="text-xl font-bold text-blue-700 mb-2">家族専用の釣りアルバムです</h2>
+            <p className="text-gray-700">右上の「ログイン」から、登録済みの家族のGoogleアカウントでログインしてください。</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="min-h-screen bg-blue-50 text-gray-800">
+        <Header />
+        <main className="container mx-auto p-4 md:p-8">
+          <div className="max-w-xl mx-auto bg-white rounded-lg shadow p-6 text-center">
+            <h2 className="text-xl font-bold text-red-700 mb-2">このアカウントは登録されていません</h2>
+            <p className="text-gray-700">家族として登録したGoogleアカウントでログインし直してください。</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-blue-50 text-gray-800">
       <Header />
       <main className="container mx-auto p-4 md:p-8">
-        {!user && (
-            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md shadow" role="alert">
-                <p className="font-bold">データを保存・同期するにはログインしてください</p>
-                <p className="text-sm">Googleアカウントでログインすると、釣果が自動でクラウドに保存され、他のスマホやPCからも見れるようになります。</p>
-            </div>
-        )}
+
         <EncyclopediaProgress 
           fishes={fishes} 
         />
@@ -347,7 +386,7 @@ const App: React.FC = () => {
           onAddLocation={handleAddLocation}
           anglers={anglers}
           onAddAngler={handleAddAngler}
-          isLoggedIn={!!user}
+          isLoggedIn={hasAccess}
         />
       )}
     </div>
