@@ -242,10 +242,7 @@ const FishDetailModal: React.FC<FishDetailModalProps> = ({ fish, onClose, onAddC
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          <div
-            className="flex h-full w-full items-center justify-center"
-            onClick={(event) => event.stopPropagation()}
-          >
+          <div className="flex h-full w-full items-center justify-center">
             <AuthenticatedImage
               source={expandedImage.source}
               alt={expandedImage.alt}
