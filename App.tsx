@@ -9,6 +9,7 @@ import FishGrid from './components/FishGrid';
 import FishDetailModal from './components/FishDetailModal';
 import EncyclopediaProgress from './components/EncyclopediaProgress';
 import Ranking from './components/Ranking';
+import PhotoSecurityMigration from './components/PhotoSecurityMigration';
 import { useAuth } from './hooks/useAuth';
 import firebase from 'firebase/compat/app';
 import { albumOwnerUid, isFamilyConfigReady, isFamilyMember } from './familyConfig';
@@ -364,7 +365,7 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-blue-50 text-gray-800">
       <Header />
       <main className="container mx-auto p-4 md:p-8">
-
+        <PhotoSecurityMigration fishes={fishes} />
         <EncyclopediaProgress 
           fishes={fishes} 
         />

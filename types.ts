@@ -9,6 +9,7 @@ export interface CatchLog {
   dishImageUrl?: string;
   tasteRating?: number; // 1 to 5
   dishNotes?: string;
+  legacyStorageCleanup?: string[];
 }
 
 export interface Fish {
