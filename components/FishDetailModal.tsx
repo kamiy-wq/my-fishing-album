@@ -24,8 +24,8 @@ const StarIcon = ({ className = '' }: { className?: string }) => (
   </svg>
 );
 
-const EditIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z"></path></svg>;
-const TrashIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>;
+const EditIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z"></path></svg>;
+const TrashIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>;
 
 
 const FishDetailModal: React.FC<FishDetailModalProps> = ({ fish, onClose, onAddCatch, onEditCatch, onDeleteCatch, onSetCoverImage, locations, onAddLocation, anglers, onAddAngler, isLoggedIn }) => {
@@ -169,7 +169,7 @@ const FishDetailModal: React.FC<FishDetailModalProps> = ({ fish, onClose, onAddC
                           )}
                       </div>
                     )}
-                    <div className="border-t border-gray-200 bg-white p-2 flex justify-end items-center gap-2">
+                    <div className="border-t border-gray-200 bg-white p-3 grid grid-cols-3 gap-2">
                       <button 
                         onClick={async () => {
                           setIsSettingCover(log.id);
@@ -180,22 +180,38 @@ const FishDetailModal: React.FC<FishDetailModalProps> = ({ fish, onClose, onAddC
                           }
                         }}
                         disabled={fish.coverImageCatchId === log.id || !!isSettingCover}
-                        className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors py-1 px-2 rounded-md hover:bg-gray-100"
+                        className={`min-h-[48px] flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
+                          fish.coverImageCatchId === log.id
+                            ? 'border-amber-300 bg-amber-50 text-amber-700'
+                            : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50'
+                        }`}
                         title="代表写真に設定する"
                         aria-label="代表写真に設定する"
                       >
-                        <StarIcon className={`w-4 h-4 ${fish.coverImageCatchId === log.id ? 'text-yellow-500' : ''}`} />
-                        <span>{isSettingCover === log.id ? '設定中...' : '代表に設定'}</span>
+                        <StarIcon className={`w-5 h-5 ${fish.coverImageCatchId === log.id ? 'text-yellow-500' : ''}`} />
+                        <span>{isSettingCover === log.id ? '設定中...' : fish.coverImageCatchId === log.id ? '代表写真' : '代表に設定'}</span>
                       </button>
-                      <button onClick={() => handleOpenEditForm(log)} className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-blue-600 py-1 px-2 rounded-md hover:bg-gray-100 transition-colors" title="編集する" aria-label="編集する"><EditIcon /><span>編集</span></button>
+                      <button
+                        onClick={() => handleOpenEditForm(log)}
+                        className="min-h-[48px] flex items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2 py-2 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100"
+                        title="編集する"
+                        aria-label="編集する"
+                      >
+                        <EditIcon />
+                        <span>編集</span>
+                      </button>
                       <button 
                         onClick={async () => {
                           if (window.confirm('この釣果記録を削除しますか？この操作は元に戻せません。')) {
                             await onDeleteCatch(fish.id, log.id);
                           }
                         }}
-                        className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 py-1 px-2 rounded-md hover:bg-red-50 transition-colors" title="削除する" aria-label="削除する">
-                          <TrashIcon /><span>削除</span>
+                        className="min-h-[48px] flex items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100 hover:text-red-700"
+                        title="削除する"
+                        aria-label="削除する"
+                      >
+                        <TrashIcon />
+                        <span>削除</span>
                       </button>
                     </div>
                   </div>
