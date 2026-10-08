@@ -35,16 +35,16 @@ const FishCard: React.FC<FishCardProps> = ({ fish, onSelectFish }) => {
 
   return (
     <div
-      className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transform hover:scale-105 hover:shadow-xl transition-all duration-300 group"
+      className="bg-white rounded-xl shadow-md overflow-hidden cursor-pointer transform hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300 group border border-gray-100"
       onClick={() => onSelectFish(fish)}
       aria-label={`${fish.name}。${hasBeenCaught ? `最近釣ったのは${coverCatch!.date}` : 'まだ釣れていません'}`}
     >
-      <div className="relative aspect-[4/3]">
+      <div className="relative aspect-square bg-gray-100 flex items-center justify-center">
         {hasBeenCaught && coverCatch ? (
           <AuthenticatedImage
             source={coverCatch.imageUrl}
             alt={fish.name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:brightness-105 bg-gray-200"
+            className="w-full h-full object-contain transition-transform duration-300 group-hover:brightness-105 bg-gray-100"
             loading="lazy"
           />
         ) : (
@@ -56,22 +56,22 @@ const FishCard: React.FC<FishCardProps> = ({ fish, onSelectFish }) => {
                 <span>{fish.catches.length}匹</span>
             </div>
         )}
-        <div className="absolute bottom-0 left-0 right-0 p-3 pt-6 bg-gradient-to-t from-black/70 to-transparent">
-          <h3 className="text-white text-sm md:text-base font-bold drop-shadow-lg truncate">
-            {fish.name}
-            {fish.isPoisonous && <span className="text-red-400 text-xs ml-1.5 font-semibold align-middle">(毒あり)</span>}
-          </h3>
-           {avgRating > 0 && (
-            <div className="flex items-center mt-0.5 text-white text-xs">
-              <span className="font-semibold mr-1">味：</span>
-              <div className="flex">
-                {[...Array(5)].map((_, i) => (
-                  <StarIcon key={i} className={i < avgRating ? 'text-yellow-300' : 'text-gray-500'} />
-                ))}
-              </div>
+      </div>
+      <div className="px-3 py-2.5 min-h-[68px]">
+        <h3 className="text-gray-800 text-sm md:text-base font-bold leading-snug">
+          {fish.name}
+          {fish.isPoisonous && <span className="text-red-500 text-xs ml-1.5 font-semibold align-middle">(毒あり)</span>}
+        </h3>
+        {avgRating > 0 && (
+          <div className="flex items-center mt-1 text-gray-600 text-xs">
+            <span className="font-semibold mr-1">味：</span>
+            <div className="flex">
+              {[...Array(5)].map((_, i) => (
+                <StarIcon key={i} className={i < avgRating ? 'text-yellow-400' : 'text-gray-300'} />
+              ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

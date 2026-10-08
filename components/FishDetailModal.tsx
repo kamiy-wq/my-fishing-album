@@ -92,8 +92,8 @@ const FishDetailModal: React.FC<FishDetailModalProps> = ({ fish, onClose, onAddC
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {fish.catches.map((log) => (
                   <div key={log.id} className="bg-gray-50 rounded-lg overflow-hidden shadow flex flex-col">
-                    <div className="relative">
-                      <AuthenticatedImage source={log.imageUrl} alt={`Catch on ${log.date}`} className="w-full h-48 object-cover bg-gray-200" loading="lazy" />
+                    <div className="relative bg-gray-100 min-h-48 flex items-center justify-center">
+                      <AuthenticatedImage source={log.imageUrl} alt={`Catch on ${log.date}`} className="w-full max-h-[65vh] object-contain bg-gray-100" loading="lazy" />
                       {fish.coverImageCatchId === log.id && (
                         <div className="absolute top-2 left-2 bg-yellow-400 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow">
                           <StarIcon className="w-3 h-3"/> <span>代表写真</span>
@@ -111,7 +111,7 @@ const FishDetailModal: React.FC<FishDetailModalProps> = ({ fish, onClose, onAddC
                       <div className="border-t border-gray-200 p-3 text-sm space-y-2">
                           <h4 className="font-semibold text-gray-600 text-xs uppercase tracking-wider">食べた記録</h4>
                           {log.dishImageUrl && (
-                              <AuthenticatedImage source={log.dishImageUrl} alt="料理の写真" className="w-full h-32 object-cover rounded-md mt-1 bg-gray-200" loading="lazy" />
+                              <AuthenticatedImage source={log.dishImageUrl} alt="料理の写真" className="w-full max-h-80 object-contain rounded-md mt-1 bg-gray-100" loading="lazy" />
                           )}
                           {log.tasteRating && log.tasteRating > 0 && (
                               <div className="flex items-center">
