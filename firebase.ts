@@ -2,6 +2,8 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/storage';
+import { getApp as getModularApp } from 'firebase/app';
+import { getStorage as getModularStorage } from 'firebase/storage';
 
 // Your web app's Firebase configuration.
 // Vite exposes environment variables on `import.meta.env`.
@@ -28,4 +30,5 @@ if (!firebase.apps.length) {
 export const auth = firebase.auth();
 export const db = firebase.firestore();
 export const storage = firebase.storage();
+export const secureStorage = getModularStorage(getModularApp());
 export const googleProvider = new firebase.auth.GoogleAuthProvider();
