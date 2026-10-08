@@ -1,6 +1,7 @@
 
 import React from 'react';
 import type { Fish } from '../types.ts';
+import AuthenticatedImage from './AuthenticatedImage';
 
 interface FishCardProps {
   fish: Fish;
@@ -40,10 +41,10 @@ const FishCard: React.FC<FishCardProps> = ({ fish, onSelectFish }) => {
     >
       <div className="relative aspect-[4/3]">
         {hasBeenCaught && coverCatch ? (
-          <img
-            src={coverCatch.imageUrl}
+          <AuthenticatedImage
+            source={coverCatch.imageUrl}
             alt={fish.name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:brightness-105"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:brightness-105 bg-gray-200"
             loading="lazy"
           />
         ) : (
