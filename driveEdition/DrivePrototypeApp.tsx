@@ -4,6 +4,7 @@ import {
   createJsonFile,
   downloadDriveFile,
   downloadJsonFile,
+  findDriveFilesByName,
   listDriveFilesInFolder,
   requestDriveAccess,
   uploadPhoto,
@@ -43,6 +44,7 @@ const DrivePrototypeApp: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [loadedCatches, setLoadedCatches] = useState<LoadedCatch[]>([]);
+  const [availableAlbums, setAvailableAlbums] = useState<Array<{ fileId: string; manifest: DriveAlbumManifest }>>([]);
   const [status, setStatus] = useState('Firebase本番には触れない、Google Drive版の独立試作です。');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -81,12 +83,36 @@ const DrivePrototypeApp: React.FC = () => {
       setAccessToken(token);
       setStatus('Google Driveに接続しました。データはこのブラウザではなく、あなたのDriveへ保存します。');
 
+      const manifestFiles = await findDriveFilesByName(token, 'album.json');
+      const discovered: Array<{ fileId: string; manifest: DriveAlbumManifest }> = [];
+      for (const file of manifestFiles) {
+        try {
+          const item = await downloadJsonFile<DriveAlbumManifest>(token, file.id);
+          if (item.schemaVersion && item.rootFolderId && item.catchesFolderId) {
+            discovered.push({ fileId: file.id, manifest: item });
+          }
+        } catch (manifestError) {
+          console.warn('Skipping unreadable album manifest', manifestError);
+        }
+      }
+      setAvailableAlbums(discovered);
+
       if (manifestFileId) {
         const savedManifest = await downloadJsonFile<DriveAlbumManifest>(token, manifestFileId);
         setManifest(savedManifest);
         setAlbumTitle(savedManifest.title);
         setStatus('Google Driveに接続し、前回の試作アルバムを読み込みました。');
       }
+    });
+
+  const openExistingAlbum = (fileId: string, target: DriveAlbumManifest) =>
+    run('既存のGoogle Driveアルバムを開いています…', async () => {
+      setManifestFileId(fileId);
+      setManifest(target);
+      setAlbumTitle(target.title);
+      window.localStorage.setItem(MANIFEST_ID_KEY, fileId);
+      await loadFromDrive(accessToken, target);
+      setStatus(`「${target.title}」をGoogle Driveから開きました。`);
     });
 
   const createAlbum = () =>
@@ -225,7 +251,31 @@ const DrivePrototypeApp: React.FC = () => {
         </section>
 
         <section className="rounded-xl bg-white p-4 shadow-sm">
-          <h2 className="text-lg font-bold">2. 自分のDriveにアルバムを作成</h2>
+          <h2 className="text-lg font-bold">2. 既存アルバムを開く</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            このアプリで作成済みのアルバムをGoogle Driveから探します。ブラウザの保存情報が消えても、Drive側のalbum.jsonから復元できます。
+          </p>
+          <div className="mt-3 space-y-2">
+            {availableAlbums.map((album) => (
+              <button
+                key={album.fileId}
+                type="button"
+                onClick={() => openExistingAlbum(album.fileId, album.manifest)}
+                disabled={busy || !accessToken}
+                className="flex min-h-12 w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left font-semibold hover:bg-slate-100 disabled:opacity-50"
+              >
+                <span>{album.manifest.title}</span>
+                <span className="text-xs font-normal text-slate-500">Driveから開く</span>
+              </button>
+            ))}
+            {accessToken && availableAlbums.length === 0 && (
+              <p className="text-sm text-slate-500">このアプリで作成済みのアルバムはまだ見つかりません。</p>
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-xl bg-white p-4 shadow-sm">
+          <h2 className="text-lg font-bold">3. 自分のDriveにアルバムを作成</h2>
           <label className="mt-3 block text-sm font-semibold">アルバム名</label>
           <input
             value={albumTitle}
@@ -248,7 +298,7 @@ const DrivePrototypeApp: React.FC = () => {
         </section>
 
         <section className="rounded-xl bg-white p-4 shadow-sm">
-          <h2 className="text-lg font-bold">3. 釣果1件＋写真をDriveへ保存</h2>
+          <h2 className="text-lg font-bold">4. 釣果1件＋写真をDriveへ保存</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="text-sm font-semibold">魚名
               <input value={fishName} onChange={(e) => setFishName(e.target.value)} className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
@@ -285,7 +335,7 @@ const DrivePrototypeApp: React.FC = () => {
         <section className="rounded-xl bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold">4. Driveから再読み込み</h2>
+              <h2 className="text-lg font-bold">5. Driveから再読み込み</h2>
               <p className="text-sm text-slate-500">保存したJSONと写真をGoogle Driveから取り直して表示します。</p>
             </div>
             <button
