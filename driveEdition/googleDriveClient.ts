@@ -229,3 +229,19 @@ export const deleteDriveFile = async (
     throw new Error(`Google Drive API error ${response.status}: ${body}`);
   }
 };
+
+
+export const listDriveFilesInFolder = async (
+  accessToken: string,
+  parentId: string,
+): Promise<DriveFileMetadata[]> => {
+  const query = encodeURIComponent(`'${parentId}' in parents and trashed = false`);
+  const fields = encodeURIComponent('files(id,name,mimeType,parents,modifiedTime)');
+  const response = await fetch(
+    `${DRIVE_API}/files?q=${query}&fields=${fields}&orderBy=modifiedTime desc&pageSize=1000`,
+    { headers: authHeaders(accessToken) },
+  );
+
+  const data = await parseJson<{ files?: DriveFileMetadata[] }>(response);
+  return data.files || [];
+};
