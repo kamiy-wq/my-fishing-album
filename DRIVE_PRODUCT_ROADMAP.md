@@ -85,3 +85,7 @@ The web app may later have a separate licensing system, but licensing data must 
 
 Do not merge this branch into `main`.
 When the Drive edition is ready for testing, deploy this branch as a separate Netlify site/domain.
+
+## Deploy Preview environment
+
+For the prototype, `VITE_GOOGLE_CLIENT_ID` is intentionally configured only for Netlify Deploy Previews. Production remains empty so the current Firebase app is unaffected.
