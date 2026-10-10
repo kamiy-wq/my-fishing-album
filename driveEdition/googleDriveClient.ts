@@ -245,3 +245,20 @@ export const listDriveFilesInFolder = async (
   const data = await parseJson<{ files?: DriveFileMetadata[] }>(response);
   return data.files || [];
 };
+
+
+export const findDriveFilesByName = async (
+  accessToken: string,
+  name: string,
+): Promise<DriveFileMetadata[]> => {
+  const escapedName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const query = encodeURIComponent(`name = '${escapedName}' and trashed = false`);
+  const fields = encodeURIComponent('files(id,name,mimeType,parents,modifiedTime)');
+  const response = await fetch(
+    `${DRIVE_API}/files?q=${query}&fields=${fields}&orderBy=modifiedTime desc&pageSize=100`,
+    { headers: authHeaders(accessToken) },
+  );
+
+  const data = await parseJson<{ files?: DriveFileMetadata[] }>(response);
+  return data.files || [];
+};
