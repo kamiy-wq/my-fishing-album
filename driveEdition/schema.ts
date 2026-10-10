@@ -4,6 +4,7 @@ export interface DriveAlbumManifest {
   schemaVersion: number;
   albumId: string;
   title: string;
+  rootFolderId: string;
   createdAt: string;
   updatedAt: string;
   settingsFileId?: string;
