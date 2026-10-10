@@ -55,6 +55,7 @@ export const createNewDriveAlbum = async (
     schemaVersion: DRIVE_ALBUM_SCHEMA_VERSION,
     albumId: makeAlbumId(),
     title,
+    rootFolderId: rootFolder.id,
     createdAt: now,
     updatedAt: now,
     settingsFileId: settingsFile.id,
